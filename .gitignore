@@ -1,0 +1,16 @@
+# Ignora la cartella node_modules (dipendenze di Node.js)
+node_modules/
+
+# Ignora il file .env (per variabili di ambiente)
+.env
+
+# Ignora i file di log
+*.log
+
+# Ignora i file temporanei
+*.tmp
+*.swp
+
+# Ignora il file package-lock.json (se non vuoi tracciarlo)
+# (Sconsigliato se vuoi la stessa versione delle dipendenze su tutte le macchine)
+# package-lock.json
