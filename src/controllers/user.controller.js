@@ -1,8 +1,30 @@
+const config = require('../config');
 const User = require('../models/user.model');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const uploadToCloudinary = require('../utils/cloudinary');
+
+//internal utility function to generate JWT tokens
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    //find the user
+    const user = await User.findById(userId);
+    // if (!user) {
+    //   throw new ApiError(404, 'User not found');
+    // }
+
+    //access token methods
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error('🔥 GENERATE TOKENS ERROR:', error);
+    throw new ApiError(500, 'Error generate tokens');
+  }
+};
 
 //!@Desc:Register a new user with optional avatar and cover Image
 //@Route: POST /api/v1/users/register
@@ -92,12 +114,87 @@ const registerUser = asyncHandler(async (req, res) => {
 //@Route: POST /api/v1/users/login
 //Access: Public
 
-const loginUser = asyncHandler(async (req, res) => {});
+const loginUser = asyncHandler(async (req, res) => {
+  //get credenzials from request
+  const { email, username, password } = req.body;
+  //validation
+  if (!email && !username) {
+    throw new ApiError(400, 'Email or username are required');
+  }
+
+  if (!password) {
+    throw new ApiError(400, 'Password is required');
+  }
+
+  //find the user either by username / email
+  const user = await User.findOne({
+    $or: [{ email }, { username }],
+  });
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  //check is password is correct
+  const isPasswordValid = await user.isPasswordCorrect(password);
+  if (!isPasswordValid) {
+    throw new ApiError(401, 'Invalid credentials');
+  }
+
+  //generate tokens
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
+
+  //get user without sentitive field
+  const loggedInUser = await User.findById(user._id).select(
+    '-password -refreshToken'
+  );
+
+  //set cookies
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'strict', //CSRF protection
+    secure: config.nodeEnv === 'production',
+  };
+  //return response
+
+  return res
+    .status(200)
+    .cookie('accessToken', accessToken, cookieOptions)
+    .cookie('refreshToken', refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(200, { loggedInUser }, 'User logged in successfully')
+    );
+});
 
 //!@Desc: Logout user and clean tokens
 //@Route: POST /api/v1/users/logout
 //Access: Public
-const logoutUser = asyncHandler(async (req, res) => {});
+const logoutUser = asyncHandler(async (req, res) => {
+  //Clear refresh token in database
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { refreshAccessToken: null },
+    },
+    {
+      new: true,
+    }
+  );
+
+  //clear cookie
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: config.nodeEnv === 'production',
+  };
+
+  return res
+    .status(200)
+    .cookie('accessToken', cookieOptions)
+    .cookie('refreshToken', cookieOptions)
+    .json(new ApiResponse(200, {}, 'User logged in successfully'));
+});
 
 //!@Desc: refresh access token using refresh token
 //@Route: POST /api/v1/users/refresh-token

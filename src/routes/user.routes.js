@@ -1,4 +1,5 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const {
   registerUser,
   loginUser,
@@ -15,6 +16,7 @@ const {
   resetPassword,
 } = require('../controllers/user.controller');
 const { upload } = require('../middlewares/multer.middleware');
+const verifyJWT = require('../middlewares/auth.middleware');
 
 const userRoute = express.Router();
 
@@ -40,7 +42,7 @@ userRoute.post('/reset-password', resetPassword);
 
 //private
 //!Protected routes ()
-userRoute.post('/logout', logoutUser);
+userRoute.post('/logout', verifyJWT, logoutUser);
 
 userRoute.get('/current-user', getCurrentUSer);
 

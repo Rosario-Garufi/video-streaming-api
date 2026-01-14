@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const config = {
-  port: process.env.PORT || 8000,
+  port: process.env.PORT || 5000,
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
   nodeEnv: process.env.NODE_ENV || 'development',
   mongoURI: process.env.MONGO_URI,
