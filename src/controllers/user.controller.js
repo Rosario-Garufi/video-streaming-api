@@ -1,10 +1,92 @@
+const User = require('../models/user.model');
+const ApiError = require('../utils/ApiError');
+const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const uploadToCloudinary = require('../utils/cloudinary');
 
 //!@Desc:Register a new user with optional avatar and cover Image
 //@Route: POST /api/v1/users/register
 //Access: Public
 
-const registerUser = asyncHandler(async (req, res) => {});
+const registerUser = asyncHandler(async (req, res) => {
+  //get user detaild from request
+  const { username, email, fullName, password } = req.body;
+
+  //validator
+  if (!username || !email || !fullName || !password) {
+    throw new ApiError(400, 'username, email, fullName, password are required');
+  }
+
+  //check if the user already exist
+  const existingUser = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (existingUser) {
+    throw new ApiError(409, 'User already exist');
+  }
+
+  //upload avatar if provided
+  let avatarLocalPath;
+  let avatarUpload = {};
+  if (req.files && req.files.avatar && req.files.avatar[0]?.path) {
+    avatarLocalPath = req.files.avatar[0].path;
+    const uploadResult = await uploadToCloudinary(
+      avatarLocalPath,
+      'youtube/avatars'
+    );
+    if (!uploadResult) {
+      throw new ApiError(500, 'Error uploading avatar');
+    }
+    avatarUpload = {
+      public_id: uploadResult.public_id,
+      url: uploadResult.secure_url,
+    };
+  }
+
+  //upload coverImage if provided
+  let coverImageLocalPath;
+  let coverImageUpload = {};
+  if (req.files && req.files.coverImage && req.files.coverImage[0]?.path) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+    const uploadResult = await uploadToCloudinary(
+      coverImageLocalPath,
+      'youtube/cover-images'
+    );
+    if (!uploadResult) {
+      throw new ApiError(500, 'Error uploading cover-image');
+    }
+    coverImageUpload = {
+      public_id: uploadResult.public_id,
+      url: uploadResult.secure_url,
+    };
+  }
+
+  //create the user
+  const user = await User.create({
+    username: username.toLowerCase(),
+    fullName,
+    email,
+    password,
+    avatar: Object.keys(avatarUpload) > 0 ? avatarUpload : undefined,
+    coverImage:
+      Object.keys(coverImageUpload) > 0 ? coverImageUpload : undefined,
+  });
+
+  // Remove password and refresh token from response
+  const createdUser = await User.findById(user._id).select(
+    '-password -refreshToken'
+  );
+
+  if (!createdUser) {
+    throw new ApiError(500, 'Error registering user');
+  }
+
+  //return the response
+  return res
+    .status(201)
+    .json(new ApiResponse(201, createdUser, 'User register successful'));
+});
 
 //!@Desc: Login user and generate token
 //@Route: POST /api/v1/users/login
