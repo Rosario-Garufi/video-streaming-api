@@ -68,9 +68,9 @@ const registerUser = asyncHandler(async (req, res) => {
     fullName,
     email,
     password,
-    avatar: Object.keys(avatarUpload) > 0 ? avatarUpload : undefined,
+    avatar: Object.keys(avatarUpload).length > 0 ? avatarUpload : undefined,
     coverImage:
-      Object.keys(coverImageUpload) > 0 ? coverImageUpload : undefined,
+      Object.keys(coverImageUpload).length > 0 ? coverImageUpload : undefined,
   });
 
   // Remove password and refresh token from response
