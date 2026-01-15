@@ -33,4 +33,7 @@ const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
     throw new Error('failed to deliting media from cloudinary');
   }
 };
-module.exports = uploadToCloudinary;
+module.exports = {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+};

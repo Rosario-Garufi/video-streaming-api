@@ -3,7 +3,10 @@ const User = require('../models/user.model');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
-const uploadToCloudinary = require('../utils/cloudinary');
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require('../utils/cloudinary');
 const jwt = require('jsonwebtoken');
 //internal utility function to generate JWT tokens
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -26,7 +29,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
   }
 };
 
-//!@Desc:Register a new user with optional avatar and cover Image
+//@Desc:Register a new user with optional avatar and cover Image
 //@Route: POST /api/v1/users/register
 //Access: Public
 
@@ -110,7 +113,7 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, createdUser, 'User register successful'));
 });
 
-//!@Desc: Login user and generate token
+//@Desc: Login user and generate token
 //@Route: POST /api/v1/users/login
 //Access: Public
 
@@ -167,7 +170,7 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-//!@Desc: Logout user and clean tokens
+//@Desc: Logout user and clean tokens
 //@Route: POST /api/v1/users/logout
 //Access: Public
 const logoutUser = asyncHandler(async (req, res) => {
@@ -175,7 +178,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { refreshAccessToken: null },
+      $set: { refreshToken: null },
     },
     {
       new: true,
@@ -187,16 +190,18 @@ const logoutUser = asyncHandler(async (req, res) => {
     httpOnly: true,
     sameSite: 'strict',
     secure: config.nodeEnv === 'production',
+    path: '/',
+    expires: new Date(0),
   };
 
   return res
     .status(200)
-    .cookie('accessToken', cookieOptions)
-    .cookie('refreshToken', cookieOptions)
+    .clearCookie('accessToken', cookieOptions)
+    .clearCookie('refreshToken', cookieOptions)
     .json(new ApiResponse(200, {}, 'User logout successfully'));
 });
 
-//!@Desc: refresh access token using refresh token
+//@Desc: refresh access token using refresh token
 //@Route: POST /api/v1/users/refresh-token
 //Access: Public
 
@@ -261,14 +266,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-//!@Desc: change user Password
+//@Desc: change user Password
 //@Route: POST /api/v1/users/change-password
 //Access: Private
 
 const changePassword = asyncHandler(async (req, res) => {
   //get oldPass and new Pass
   const { oldPassword, newPassword } = req.body;
-  console.log('User', req.user);
 
   if (!oldPassword || !newPassword) {
     throw new ApiError(400, 'Old password and new password are required');
@@ -294,29 +298,143 @@ const changePassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, 'Password changed successful'));
 });
 
-//!@Desc: get current user
+//@Desc: get current user
 //@Route: GET /api/v1/users/current
 //Access:  Private
 
-const getCurrentUSer = asyncHandler(async (req, res) => {});
+const getCurrentUSer = asyncHandler(async (req, res) => {
+  return res.status(200).json(new ApiResponse(200, req.user));
+});
 
-//!@Desc: update account detail
+//@Desc: update account detail
 //@Route: POST /api/v1/users/current
 //Access:  Private
 
-const updateUserProfile = asyncHandler(async (req, res) => {});
+const updateUserProfile = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
 
-//!@Desc: update user's avatar
+  if (!fullName && !email) {
+    throw new ApiError(400, 'At least one field is required');
+  }
+
+  //update the user
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullName: fullName || req.user.fullName,
+        email: email || req.user.email,
+      },
+    },
+    { new: true }
+  ).select('-password -refreshToken');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'User profile update successfully'));
+});
+
+//@Desc: update user's avatar
 //@Route: PATCH /api/v1/users/avatar
 //Access:  Private
 
-const updateUserAvatar = asyncHandler(async (req, res) => {});
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  //get avatar file
+  const avatarLocalFile = req.file.path;
+  if (!avatarLocalFile) {
+    throw new ApiError(400, 'Avatar is required');
+  }
 
-//!@Desc: update user's cover image
+  //get user
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(400, 'User not found');
+  }
+
+  //delete old avatar
+  if (user?.avatar?.public_id) {
+    await deleteFromCloudinary(user?.avatar?.public_id);
+  }
+
+  //upload new avatar
+  const uploadResult = await uploadToCloudinary(
+    avatarLocalFile,
+    'youtube/avatars'
+  );
+
+  if (!uploadResult) {
+    throw new ApiError(500, 'Upload avatar error');
+  }
+
+  //update the user
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: {
+          public_id: uploadResult.public_id,
+          url: uploadResult.secure_url,
+        },
+      },
+    },
+    { new: true }
+  ).select('-password -refreshToken');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, 'Avatar updated successful'));
+});
+
+//@Desc: update user's cover image
 //@Route: GET /api/v1/users/cover-image
 //Access:  Private
 
-const updateUserCoverImage = asyncHandler(async (req, res) => {});
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImagePath = req?.file?.path;
+
+  if (!coverImagePath) {
+    throw new ApiError(400, 'coverImage is required');
+  }
+  //find the user and delete the actually coverImage
+  const user = await User.findById(req.user._id);
+  //check if the user exist
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  //delete the actual coverImage
+  if (user?.coverImage?.public_id) {
+    await deleteFromCloudinary(user?.coverImage?.public_id);
+  }
+
+  //upload the new coverImage
+  const uploadResult = await uploadToCloudinary(
+    coverImagePath,
+    'youtube/cover-images'
+  );
+
+  if (!uploadResult) {
+    throw new ApiError(500, 'Upload cover image failed');
+  }
+
+  //update the user
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: {
+          public_id: uploadResult.public_id,
+          url: uploadResult.secure_url,
+        },
+      },
+    },
+    { new: true }
+  ).select('-password -refreshToken');
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, 'Cover image update successful'));
+});
 
 //!@Desc: Get user's channel profile with subscription details
 //@Route: GET /api/v1/users/channel
