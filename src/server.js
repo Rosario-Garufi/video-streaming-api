@@ -5,6 +5,7 @@ const config = require('./config');
 const connectDB = require('./config/db');
 const userRoute = require('./routes/user.routes');
 const cookieParser = require('cookie-parser');
+const { notFound, errorHandler } = require('./middlewares/error.middleware');
 
 const app = express();
 
@@ -16,6 +17,10 @@ connectDB();
 
 //****** USER ROUTES ******//
 app.use('/api/v1/users', userRoute);
+
+//Error handle
+app.use(notFound);
+app.use(errorHandler);
 
 //server
 app.listen(config.port, () => {

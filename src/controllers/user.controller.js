@@ -4,7 +4,7 @@ const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const uploadToCloudinary = require('../utils/cloudinary');
-
+const jwt = require('jsonwebtoken');
 //internal utility function to generate JWT tokens
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -193,20 +193,106 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .cookie('accessToken', cookieOptions)
     .cookie('refreshToken', cookieOptions)
-    .json(new ApiResponse(200, {}, 'User logged in successfully'));
+    .json(new ApiResponse(200, {}, 'User logout successfully'));
 });
 
 //!@Desc: refresh access token using refresh token
 //@Route: POST /api/v1/users/refresh-token
 //Access: Public
 
-const refreshAccessToken = asyncHandler(async (req, res) => {});
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    //get refresh token from cookiees or body;
+
+    const incomingRefreshToken =
+      req?.cookies?.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, 'Refresh token is required');
+    }
+
+    //verify the refresh token
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      config.refreshTokenSecret
+    );
+
+    //find the user with this refresh token
+    const user = await User.findById(decodedToken._id);
+    if (!user) {
+      throw new ApiError(401, 'Invalid refresh token');
+    }
+
+    if (incomingRefreshToken !== user.refreshToken) {
+      throw new ApiError(401, 'Refresh token is expired or used');
+    }
+
+    //generate new token
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshTokens(user?._id);
+
+    //set cookies
+    const cookieOptions = {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: config.nodeEnv === 'production',
+    };
+
+    //return response
+    return res
+      .status(200)
+      .cookie('accessToken', accessToken, cookieOptions)
+      .cookie('refreshToken', newRefreshToken, cookieOptions)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken,
+            refreshToken: newRefreshToken,
+          },
+          'Access token refreshed successfully'
+        )
+      );
+  } catch (error) {
+    console.log(`Error generate refreshToken ${error.message}`);
+
+    throw new ApiError(401, error?.message || 'Invalid refresh token');
+  }
+});
 
 //!@Desc: change user Password
 //@Route: POST /api/v1/users/change-password
 //Access: Private
 
-const changePassword = asyncHandler(async (req, res) => {});
+const changePassword = asyncHandler(async (req, res) => {
+  //get oldPass and new Pass
+  const { oldPassword, newPassword } = req.body;
+  console.log('User', req.user);
+
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, 'Old password and new password are required');
+  }
+
+  if (oldPassword === newPassword) {
+    throw new ApiError(400, 'Old Password is equal new password');
+  }
+
+  //find the user with password
+  const user = await User.findById(req?.user._id);
+  //check is the old password is correct
+  const isOldPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  if (!isOldPasswordCorrect) {
+    throw new ApiError(400, 'Invalid old password');
+  }
+
+  //update password
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, 'Password changed successful'));
+});
 
 //!@Desc: get current user
 //@Route: GET /api/v1/users/current

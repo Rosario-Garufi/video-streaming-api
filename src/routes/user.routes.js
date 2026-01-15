@@ -42,7 +42,8 @@ userRoute.post('/reset-password', resetPassword);
 
 //private
 //!Protected routes ()
-userRoute.post('/logout', verifyJWT, logoutUser);
+userRoute.use(verifyJWT);
+userRoute.post('/logout', logoutUser);
 
 userRoute.get('/current-user', getCurrentUSer);
 
