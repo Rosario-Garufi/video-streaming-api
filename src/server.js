@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 const userRoute = require('./routes/user.routes');
 const cookieParser = require('cookie-parser');
 const { notFound, errorHandler } = require('./middlewares/error.middleware');
+const channelRoute = require('./routes/channel.route');
 
 const app = express();
 
@@ -17,6 +18,9 @@ connectDB();
 
 //****** USER ROUTES ******//
 app.use('/api/v1/users', userRoute);
+
+//****** CHANNELS ROUTES ******//
+app.use('/api/v1/channels', channelRoute);
 
 //Error handle
 app.use(notFound);
