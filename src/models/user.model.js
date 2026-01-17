@@ -71,15 +71,16 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      subscriptionActivity: {
+        type: Boolean,
+        default: true,
+      },
+      commentActivity: {
+        type: Boolean,
+        default: true,
+      },
     },
-    subscriptionActivity: {
-      type: Boolean,
-      default: true,
-    },
-    commentActivity: {
-      type: Boolean,
-      default: true,
-    },
+
     //password refresh
     refreshPasswordToken: String,
     resetPasswordExpiry: String,

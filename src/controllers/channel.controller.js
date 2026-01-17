@@ -102,7 +102,55 @@ const updateChannelInfo = asyncHandler(async (req, res) => {
 //!DESC: Update channel notification preferences
 //@route: PATCH /api/v1/channels/notifications
 //@Access: Private
-const updateNotificationSetting = asyncHandler(async (req, res) => {});
+const updateNotificationSetting = asyncHandler(async (req, res) => {
+  const { emailNotification, subscriptionActivity, commentActivity } = req.body;
+
+  //prepare update object
+
+  const notificationSettings = {};
+
+  if (emailNotification !== undefined) {
+    notificationSettings['notificationSettings.emailNotification'] =
+      emailNotification;
+  }
+
+  if (subscriptionActivity !== undefined) {
+    notificationSettings['notificationSettings.subscriptionActivity'] =
+      subscriptionActivity;
+  }
+
+  if (commentActivity !== undefined) {
+    notificationSettings['notificationSettings.commentActivity'] =
+      commentActivity;
+  }
+
+  if (Object.keys(notificationSettings).length === 0) {
+    throw new ApiError(400, 'No setting provided to update');
+  }
+
+  //update the user
+  const updateUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: notificationSettings,
+    },
+    { new: true }
+  ).select('notificationSettings');
+
+  if (!updateUser) {
+    throw new ApiError(500, 'Error updating notification setting');
+  }
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updateUser.notificationSettings,
+        'Notification setting updated'
+      )
+    );
+});
 
 //!DESC: GET channel vidos with pagination and sorting
 //@route: GET /api/v1/channels/:username/videos?page=1&limit=10&sortBy=createdAt&sortType=Desc

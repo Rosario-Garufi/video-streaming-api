@@ -21,7 +21,7 @@ channelRoute.patch(
   updateChannelInfo
 );
 
-channelRoute.patch('/notification-setting', updateNotificationSetting);
+channelRoute.patch('/notification-settings', updateNotificationSetting);
 
 //analytics overview
 
