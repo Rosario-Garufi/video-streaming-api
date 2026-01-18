@@ -1,12 +1,12 @@
 const express = require('express');
 const {
-  createNewVideo,
   getAllVideos,
   getVideoDetails,
   updateVideoThumbnail,
   deleteVideo,
   togglePublishStatus,
   shareVideo,
+  publishVideo,
 } = require('../controllers/video.controller');
 const verifyJWT = require('../middlewares/auth.middleware');
 const ApiError = require('../utils/ApiError');
@@ -32,7 +32,7 @@ videoRouter.post(
     { name: 'videoFile', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 },
   ]),
-  createNewVideo
+  publishVideo
 );
 videoRouter.patch(
   '/:videoId',
