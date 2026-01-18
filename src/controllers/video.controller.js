@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Video = require('../models/video.model');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
@@ -86,7 +87,116 @@ const publishVideo = asyncHandler(async (req, res) => {
 //@route GET /api/v1/videos?page=1&limit=10$query=tutorials&sortedBy=views&sortType=desc&userId=1234
 //Public
 
-const getAllVideos = asyncHandler(async (req, res) => {});
+const getAllVideos = asyncHandler(async (req, res) => {
+  //mongodb aggregation framework
+  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+
+  //inizialize empty pipeline array for mongoDB aggregation stages
+  let pipeline = [];
+  //stage 1: filter by userID ( id provided )
+  if (userId) {
+    pipeline.push({
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    });
+  }
+
+  //STAGE 2: Text search ( if query provided )
+  if (query) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { description: { $regex: query, $options: 'i' } },
+          { tags: { $in: [new RegExp(query, 'i')] } },
+        ],
+      },
+    });
+  }
+
+  //STAGE 3: published Videos filter
+  // pipeline.push({
+  //   $match: { isPublished: true },
+  // });
+
+  //STAGE 4: User data Lookup
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'owner',
+        foreignField: '_id',
+        as: 'owner',
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              fullName: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    //STAGE 5: Convert Owner Array to single Object
+    {
+      $addFields: {
+        owner: {
+          $first: '$owner',
+        },
+      },
+    }
+  );
+
+  //STAGE 6: Sorting
+  if (sortBy && sortType) {
+    pipeline.push({
+      $sort: {
+        [sortBy]: sortType === 'asc' ? 1 : -1,
+      },
+    });
+  } else {
+    pipeline.push({
+      $sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  //calculating total number of matching video for pagination
+  const totalResult = await Video.countDocuments(
+    pipeline.length > 0 ? pipeline[0].$match : {}
+  );
+
+  //STAGE 7: Pagination
+  pipeline.push(
+    {
+      $skip: (Number(page) - 1) * Number(limit),
+    },
+    {
+      $limit: Number(limit),
+    }
+  );
+
+  //excute the complete aggregation pipeline
+  const videos = await Video.aggregate(pipeline);
+
+  //return paginated with metadata
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        videos,
+        totalResult,
+        currentPage: parseInt(page),
+        totalResult,
+        totalPaged: Math.ceil(totalResult / Number(limit)),
+      },
+      'Videos fetched successfully'
+    )
+  );
+});
 
 //!@Desc : Get video details
 //@route GET /api/v1/videos/:videoId
