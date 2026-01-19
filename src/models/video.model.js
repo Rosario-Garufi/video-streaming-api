@@ -47,7 +47,8 @@ const videoSchema = new mongoose.Schema(
       default: 0,
     },
     isPublished: {
-      type: String,
+      type: Boolean,
+      default: false,
     },
 
     owner: {

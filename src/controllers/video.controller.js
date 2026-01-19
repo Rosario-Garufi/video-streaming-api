@@ -7,13 +7,13 @@ const {
   uploadToCloudinary,
   deleteFromCloudinary,
 } = require('../utils/cloudinary');
-//!@Desc : upload and publish a new video
+const User = require('../models/user.model');
+//@Desc : upload and publish a new video
 //@route POST /api/v1/videos
 //Private
 
 const publishVideo = asyncHandler(async (req, res) => {
   const { title, description, category, tags } = req.body;
-
   if (!title || !description || !category) {
     throw new ApiError(400, 'Title, description, category are required');
   }
@@ -83,7 +83,7 @@ const publishVideo = asyncHandler(async (req, res) => {
   }
 });
 
-//!@Desc : Get all videos with filtering, sorting and pagination
+//@Desc : Get all videos with filtering, sorting and pagination
 //@route GET /api/v1/videos?page=1&limit=10$query=tutorials&sortedBy=views&sortType=desc&userId=1234
 //Public
 
@@ -198,35 +198,287 @@ const getAllVideos = asyncHandler(async (req, res) => {
   );
 });
 
-//!@Desc : Get video details
+//@Desc : Get video details
 //@route GET /api/v1/videos/:videoId
 //Public
 
-const getVideoDetails = asyncHandler(async (req, res) => {});
+const getVideoDetails = asyncHandler(async (req, res) => {
+  console.log('Video rotta');
+  const { videoId } = req.params;
+  if (!videoId) {
+    throw new ApiError(400, 'Video id is required');
+  }
 
-//!@Desc : update video thumbnail
+  //find the video and update video view count
+  const video = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $inc: { views: 1 },
+    },
+    { new: true }
+  ).populate('owner', 'username fullName avatar');
+
+  if (!video) {
+    throw new ApiError(404, 'Video not found');
+  }
+
+  //add the video on the cronology watch history
+  if (req.user) {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $addToSet: {
+          watchHistory: videoId,
+        },
+      },
+      { new: true }
+    );
+  }
+
+  ///send the response
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, 'Video fetched successful'));
+});
+
+//@Desc : update video thumbnail
 //@route PATCH /api/v1/videos/:videoId
 //Private
 
-const updateVideoThumbnail = asyncHandler(async (req, res) => {});
+const updateVideoThumbnail = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { title, description, category, tags, isPublished } = req.body;
 
-//!@Desc : delete video
+  if (!videoId) {
+    throw new ApiError(400, 'Video id is required');
+  }
+
+  //check if exist the video abd velong to user
+
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: req.user._id,
+  });
+  if (!video) {
+    throw new ApiError(400, 'Video not found');
+  }
+
+  //update thumbnail if uploaded
+  let thumbnailUpdate = {};
+  if (req.file) {
+    const thumbnailLocalPath = req.file.path;
+    if (thumbnailLocalPath) {
+      //delete the old thumbnail
+      if (video?.thumbnail?.public_id) {
+        console.log(`Ecco l'id del thumbnail -> ${video?.thumbnail}`);
+        await deleteFromCloudinary(video?.thumbnail?.public_id);
+      }
+      //upload new thumbnail
+      const thumbnailUpload = await uploadToCloudinary(
+        thumbnailLocalPath,
+        'youtube/thumbnails'
+      );
+      if (!thumbnailUpload) {
+        throw new ApiError(500, 'Error upload thumbail to cloudinary');
+      }
+      thumbnailUpdate = {
+        thumbnail: {
+          public_id: thumbnailUpload?.public_id,
+          url: thumbnailUpload?.secure_url,
+        },
+      };
+    }
+  }
+
+  //update video details
+  const updateVideo = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        title: title || video.title,
+        description: description || video.description,
+        category: category || video.category,
+        isPublished:
+          isPublished !== undefined ? isPublished : video?.isPublished,
+        tags: tags ? JSON.parse(tags) : video?.tags,
+        ...thumbnailUpdate,
+      },
+    },
+    { new: true }
+  ).populate('owner', 'username fullName avatar');
+
+  //return the response
+  res
+    .status(200)
+    .json(new ApiResponse(200, updateVideo, 'Video update successfull'));
+});
+
+//@Desc : delete video
 //@route DELETE /api/v1/videos/:videoId
 //Private
 
-const deleteVideo = asyncHandler(async (req, res) => {});
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) {
+    throw new ApiError(404, 'Video not found');
+  }
 
-//!@Desc :  toggle video publish status (publish/unpublish)
+  //check if the video exist
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: req.user._id,
+  });
+
+  if (!video) {
+    throw new ApiError(400, "Video not found or you don't have permission");
+  }
+
+  //delete video from cloudinary
+  if (video?.videoFile?.public_id) {
+    await deleteFromCloudinary(video?.videoFile?.public_id);
+  }
+
+  //delete thumbnail from cloudinary
+  if (video?.thumbnail?.public_id) {
+    await deleteFromCloudinary(video?.thumbnail?.public_id);
+  }
+
+  //delete video from database
+  await Video.findByIdAndDelete(videoId);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, 'Video deleted successfully'));
+});
+
+//@Desc :  toggle video publish status (publish/unpublish)
 //@route GET /api/v1/videos/:videoId
 //Private
 
-const togglePublishStatus = asyncHandler(async (req, res) => {});
+const togglePublishStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) {
+    throw new ApiError(400, 'Video id is required');
+  }
+
+  //check if the video exist
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: req.user._id,
+  });
+
+  if (!video) {
+    throw new ApiError(404, 'Video not found or you not have permission');
+  }
+
+  //toggle publish status
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        isPublished: !video.isPublished,
+      },
+    },
+    { new: true }
+  ).populate('owner', 'username fullName avatar');
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedVideo,
+        `Video ${updatedVideo.isPublished ? 'published' : 'unpublished'} successfully`
+      )
+    );
+});
 
 //!@Desc :  generate sharing links for a video
 //@route GET /api/v1/videos/:videoId
 //Private
 
-const shareVideo = asyncHandler(async (req, res) => {});
+const shareVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { platform = 'general' } = req.query;
+  if (!videoId) {
+    throw new ApiError(400, 'Video id is required');
+  }
+
+  //get video detail
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, 'Video not found or you not have permission');
+  }
+
+  //generate share link
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const videoUrl = `${baseUrl}/api/v1/videos/${videoId}`;
+
+  //generate playform specific links
+  const shareLinks = {
+    direct: videoUrl,
+    clipboard: videoUrl,
+  };
+
+  //add platform-specific share links
+  switch (platform.toLowerCase()) {
+    case 'facebook':
+      shareLinks.facebook = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(videoUrl)}`;
+      break;
+
+    case 'twitter':
+      shareLinks.twitter = `https://www.twitter.com/intent/tweet/url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(video.title)}`;
+      break;
+
+    case 'whatsap':
+      shareLinks.whatsap = `https://api.whatsap.com/send?text=${encodeURIComponent(video.title + ' ' + videoUrl)}`;
+      break;
+
+    case 'linkedin':
+      shareLinks.linkedin = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(videoUrl)}`;
+      break;
+
+    case 'telegram':
+      shareLinks.linkedin = `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(video.title)}`;
+      break;
+    case 'reddit':
+      shareLinks.linkedin = `https://reddit.com/submit?url=${encodeURIComponent(video.title)}&text=${encodeURIComponent(video.title)}`;
+      break;
+    default:
+      //for "general, include all share links"
+      shareLinks = {
+        ...shareLinks,
+        facebook: `https://www.facebook.com/sharer/sharer.php/u=${encodeURIComponent(videoUrl)}`,
+        twitter: `https://www.twitter.com/intent/tweet/url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(video.title)}`,
+        whatsap: `https://api.whatsap.com/send?text=${encodeURIComponent(video.title + ' ' + videoUrl)}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(videoUrl)}`,
+        telegram: `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(video.title)}`,
+        reddit: `https://reddit.com/submit?url=${encodeURIComponent(video.title)}&text=${encodeURIComponent(video.title)}`,
+      };
+  }
+
+  //increment the share count (optional)
+  await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $inc: { shares: 1 },
+    },
+    { new: true }
+  );
+
+  //send response
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        videoId,
+        videoTitle: video.title,
+        thumbnail: video.thumbnail,
+        shareLinks,
+      },
+      'Video share links generated'
+    )
+  );
+});
 
 module.exports = {
   publishVideo,

@@ -18,13 +18,13 @@ const videoRouter = express.Router();
 
 //public
 videoRouter.get('/', getAllVideos);
-videoRouter.get('/:videoId', getVideoDetails);
 
 ///this route work with auth or not
 videoRouter.get('/:videoId/share', shareVideo);
 
 //private
 videoRouter.use(verifyJWT);
+videoRouter.get('/:videoId', getVideoDetails);
 
 videoRouter.post(
   '/',
@@ -36,10 +36,10 @@ videoRouter.post(
 );
 videoRouter.patch(
   '/:videoId',
-  upload.fields([{ name: 'thumbnail', maxCount: 1 }]),
+  upload.single('thumbnail'),
   updateVideoThumbnail
 );
-videoRouter.delete('/:toggle-publish/:videoId', togglePublishStatus);
+videoRouter.patch('/toggle-publish/:videoId', togglePublishStatus);
 videoRouter.delete('/:videoId', deleteVideo);
 
 module.exports = videoRouter;
