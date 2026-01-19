@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const { notFound, errorHandler } = require('./middlewares/error.middleware');
 const channelRoute = require('./routes/channel.route');
 const videoRouter = require('./routes/video.routes');
+const notificationRoute = require('./routes/notification.route');
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use('/api/v1/channels', channelRoute);
 
 //****** VIDEOS ROUTES ******//
 app.use('/api/v1/videos', videoRouter);
+
+//****** NOTIFICATION ROUTES ******//
+app.use('/api/v1/notifications', notificationRoute);
 
 //Error handle
 app.use(notFound);
