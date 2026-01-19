@@ -127,16 +127,45 @@ const markNotificationAsRead = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, notification, 'Notification mark as read'));
 });
 
-//!@DESC: Mark all user's notifications as read
+//@DESC: Mark all user's notifications as read
 //@route: GET /api/v1/notification/mark-all-read
 //Access: Private
-const markAllUserNotificationAsRead = asyncHandler(async (req, res) => {});
+const markAllUserNotificationAsRead = asyncHandler(async (req, res) => {
+  await Notification.updateMany(
+    {
+      recipient: req.user._id,
+      read: false,
+    },
+    { $set: { read: true } }
+  );
+
+  res.status(200).json(new ApiResponse(200, {}, 'All notification as read!'));
+});
 
 //!@DESC: Delete a specific notification
 //@route: GET /api/v1/notification/:notificationId
 //Access: Private
 
-const deleteNotification = asyncHandler(async (req, res) => {});
+const deleteNotification = asyncHandler(async (req, res) => {
+  const { notificationId } = req.params;
+
+  if (!notificationId) {
+    throw new ApiError(400, 'Notification id is required!');
+  }
+
+  const notification = await Notification.findByIdAndDelete({
+    _id: notificationId,
+    recipient: req.user._id,
+  });
+
+  if (!notification) {
+    throw new ApiError(404, 'Notification not found');
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, {}, 'Notification deleted successfully'));
+});
 
 //internal utility function to create a new notification
 const createNotification = async (recipientId, senderId, type, content) => {
