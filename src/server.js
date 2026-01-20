@@ -9,6 +9,7 @@ const { notFound, errorHandler } = require('./middlewares/error.middleware');
 const channelRoute = require('./routes/channel.route');
 const videoRouter = require('./routes/video.routes');
 const notificationRoute = require('./routes/notification.route');
+const playlistRouter = require('./routes/playlist.routes');
 
 const app = express();
 
@@ -29,6 +30,9 @@ app.use('/api/v1/videos', videoRouter);
 
 //****** NOTIFICATION ROUTES ******//
 app.use('/api/v1/notifications', notificationRoute);
+
+//****** PLAYLISTS ROUTES ******//
+app.use('/api/v1/playlists', playlistRouter);
 
 //Error handle
 app.use(notFound);
