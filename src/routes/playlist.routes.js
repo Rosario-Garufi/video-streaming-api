@@ -23,7 +23,7 @@ playlistRouter.post('/', createPlaylist);
 playlistRouter.patch('/:playlistId', updatePlaylist);
 
 //add & remove video from playlist
-playlistRouter.patch('/:playlistId/videos/:videoId', addVideotoPlaylist);
+playlistRouter.put('/:playlistId/videos/:videoId', addVideotoPlaylist);
 
 playlistRouter.delete('/:playlistId/videos/:videoId', removeVideoFromPlaylist);
 
