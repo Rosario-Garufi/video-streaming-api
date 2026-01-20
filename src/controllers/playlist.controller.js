@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Playlist = require('../models/playlist.model');
 const Video = require('../models/video.model');
 const ApiError = require('../utils/ApiError');
@@ -85,7 +86,64 @@ const addVideotoPlaylist = asyncHandler(async (req, res) => {
 //@route: GET /api/v1/users/:userId/playlists
 //Access: Public
 
-const getUserPlaylists = asyncHandler(async (req, res) => {});
+const getUserPlaylists = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  console.log(req.params);
+  const userIdToUse = userId || req.user._id;
+
+  if (!userIdToUse) {
+    throw new ApiError(400, 'User id is required');
+  }
+
+  const isOwner = req.user._id.toString() === userIdToUse.toString();
+
+  //if not the owner we return only the public playlist
+  const matchCondition = {
+    owner: new mongoose.Types.ObjectId(userIdToUse),
+    ...(isOwner ? {} : { isPublic: true }),
+  };
+  const playlist = await Playlist.aggregate([
+    {
+      $match: matchCondition,
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localField: 'videos',
+        foreignField: '_id',
+        as: 'videos',
+        pipeline: [
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              thumbnail: 1,
+              duration: 1,
+              views: 1,
+              createdAt: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        videoCount: {
+          $size: '$videos',
+        },
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, 'Playlist fetched successfully'));
+});
 
 //!@DESC: Get info abaut a specific playlist
 //@route: GET /api/v1/playlists/:playlist
