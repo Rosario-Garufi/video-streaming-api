@@ -149,25 +149,192 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 //@route: GET /api/v1/playlists/:playlist
 //Access: Public
 
-const getPlaylistById = asyncHandler(async (req, res) => {});
+const getPlaylistById = asyncHandler(async (req, res) => {
+  const { playlistId } = req.params;
+  if (!playlistId) {
+    throw new ApiError(400, 'Playlist id is required');
+  }
+
+  const playlist = await Playlist.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(playlistId),
+      },
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'owner',
+        foreignField: '_id',
+        as: 'owner',
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              fullName: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localField: 'videos',
+        foreignField: '_id',
+        as: 'videos',
+
+        pipeline: [
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'owner',
+              as: 'owner',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1,
+                  },
+                },
+                {
+                  $addFields: {
+                    owner: { $first: '$owner' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        owner: { $first: '$owner' },
+        videoCount: { $size: '$videos' },
+      },
+    },
+  ]);
+
+  if (!playlist.length) {
+    throw new ApiError(404, 'Playlist not found');
+  }
+
+  const playlistData = playlist[0];
+  //check if playlist is private and user is not the owner
+
+  if (
+    !playlistData.isPublic &&
+    (!req.user || playlistData.owner._id.toString() !== req.user._id.toString())
+  ) {
+    throw new ApiError(403, 'You not have permission to view this playlist');
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(playlistData, 'Playlist fetched successfully'));
+});
 
 //!@DESC: remove video from a playlist
 //@route: DELETE /api/v1/playlists/:playlist/videos/:videoId
 //Access: Private
 
-const removeVideoFromPlaylist = asyncHandler(async (req, res) => {});
+const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
+  const { playlistId, videoId } = req.params;
+
+  if (!playlistId || !videoId) {
+    throw new ApiError(400, 'Playlist id and videoId are required');
+  }
+
+  const updatePlaylist = await Playlist.findOneAndUpdate(
+    {
+      _id: playlistId,
+      owner: req.user._id,
+      videos: new mongoose.Types.ObjectId(videoId),
+    },
+    {
+      $pull: {
+        videos: new mongoose.Types.ObjectId(videoId),
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!updatePlaylist) {
+    throw new ApiError(
+      404,
+      'Playlist not found or video not present in playlist'
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatePlaylist, 'Video removed successfully'));
+});
 
 //!@DESC: update playlist details
 //@route: PATCH /api/v1/playlists/:playlist
 //Access: Private
 
-const updatePlaylist = asyncHandler(async (req, res) => {});
+const updatePlaylist = asyncHandler(async (req, res) => {
+  const { playlistId } = req.params;
+  const { name, description, isPublic = false } = req.body;
+
+  const update = {};
+  if (name !== undefined) update.name = name;
+  if (description !== undefined) update.description = description;
+  if (isPublic !== undefined) update.isPublic = isPublic;
+  //find playlist and update
+  const updatePlaylist = await Playlist.findOneAndUpdate(
+    {
+      _id: playlistId,
+      owner: req.user._id,
+    },
+    update,
+
+    { new: true }
+  );
+
+  if (!updatePlaylist) {
+    throw new ApiError(404, 'Playlist not found or you are not the owner');
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatePlaylist, 'Playlist updated successfully')
+    );
+});
 
 //!@DESC: delete playlist
 //@route: DELETE /api/v1/playlists/:playlist
 //Access: Private
 
-const removePlaylist = asyncHandler(async (req, res) => {});
+const removePlaylist = asyncHandler(async (req, res) => {
+  const { playlistId } = req.params;
+
+  if (!playlistId) {
+    throw new ApiError(400, 'PlaylistId is required');
+  }
+
+  //delete playlist if created of the user
+  const deletedPlaylist = await Playlist.findOneAndDelete({
+    _id: playlistId,
+    owner: req.user._id,
+  });
+
+  if (!deletedPlaylist) {
+    throw new ApiError(404, 'Playlist not found for you not have permission');
+  }
+
+  return res
+    .status(200)
+    .json(new ApiError(200, {}, 'Playlist deleted successfully'));
+});
 
 module.exports = {
   createPlaylist,

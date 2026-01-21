@@ -13,20 +13,21 @@ addVideotoPlaylist;
 const playlistRouter = express.Router();
 
 //public
-playlistRouter.get('/:playlistId', getPlaylistById);
 
 //private
 playlistRouter.use(verifyJWT);
 
 playlistRouter.post('/', createPlaylist);
-
 playlistRouter.patch('/:playlistId', updatePlaylist);
+playlistRouter.get('/:playlistId', getPlaylistById);
 
-//add & remove video from playlist
-playlistRouter.put('/:playlistId/videos/:videoId', addVideotoPlaylist);
 playlistRouter.get('/user/:userId', getUserPlaylists);
-
-playlistRouter.delete('/:playlistId/videos/:videoId', removeVideoFromPlaylist);
+//add & remove video from playlist
+playlistRouter.put('/:playlistId/add/videos/:videoId', addVideotoPlaylist);
+playlistRouter.put(
+  '/:playlistId/remove/videos/:videoId',
+  removeVideoFromPlaylist
+);
 
 //delete playlist
 playlistRouter.delete('/:playlistId', removePlaylist);
