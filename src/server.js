@@ -11,6 +11,7 @@ const videoRouter = require('./routes/video.routes');
 const notificationRoute = require('./routes/notification.route');
 const playlistRouter = require('./routes/playlist.routes');
 const likeRoute = require('./routes/like.routes');
+const commentRoute = require('./routes/comment.routes');
 
 const app = express();
 
@@ -37,6 +38,9 @@ app.use('/api/v1/playlists', playlistRouter);
 
 //****** LIKED ROUTES ******//
 app.use('/api/v1/liked', likeRoute);
+
+//****** LIKED ROUTES ******//
+app.use('/api/v1/comments', commentRoute);
 
 //Error handle
 app.use(notFound);
