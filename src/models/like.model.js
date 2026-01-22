@@ -31,7 +31,6 @@ likeSchema.pre('save', function (next) {
     );
     return next(error);
   }
-  next();
 });
 
 likeSchema.index(

@@ -15,7 +15,7 @@ const commentSchema = new mongoose.Schema(
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      required: [true, 'Video is required'],
+      required: [true, 'User is required'],
       ref: 'User',
     },
     parentComment: {
