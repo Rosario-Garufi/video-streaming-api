@@ -19,8 +19,9 @@ likeRoute.use(verifyJWT);
 likeRoute.post('/toggle/video/:videoId', toggleLikeVideo);
 likeRoute.post('/toggle/comment/:commentId', toggleLikeComment);
 
-likeRoute.get('/videos', getLikedVideos);
 likeRoute.get('/videos/:videoId', getVideoLikes);
+likeRoute.get('/videos', getLikedVideos);
+
 likeRoute.get('/comment/:commentId', getCommentLikes);
 
 module.exports = likeRoute;
