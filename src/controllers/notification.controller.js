@@ -181,7 +181,7 @@ const createNotification = async (recipientId, senderId, type, content) => {
       (type === 'SUBSCRIPTION' &&
         recipient.notificationSetting?.subscriptionActivity === false) ||
       ((type === 'COMMENT' || type === 'REPLY') &&
-        recipient.notificationSetting.commentActivity === false)
+        recipient.notificationSetting?.commentActivity === false)
     ) {
       return null;
     }
