@@ -31,6 +31,7 @@ likeSchema.pre('save', function (next) {
     );
     return next(error);
   }
+  next();
 });
 
 likeSchema.index(
@@ -49,5 +50,5 @@ likeSchema.index(
   { unique: true, sparse: true }
 );
 
-const Like = mongoose.model('Like', likeSchema);
+const Like = mongoose.models.Like || mongoose.model('Like', likeSchema);
 module.exports = Like;

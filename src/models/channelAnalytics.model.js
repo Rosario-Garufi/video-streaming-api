@@ -37,7 +37,7 @@ const channelAnalyticsSchema = new mongoose.Schema(
           type: Number,
           default: 0,
         },
-        subscriberGained: {
+        subscribersGained: {
           type: Number,
           default: 0,
         },

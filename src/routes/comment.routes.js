@@ -17,7 +17,7 @@ commentRoute.get('/:commentId/replies', getCommentReplies);
 //private
 commentRoute.use(verifyJWT);
 commentRoute.post('/video/:videoId', addComment);
-commentRoute.get('/video/:commentId', updateComment);
-commentRoute.get('/video/:commentId', deleteComment);
+commentRoute.patch('/:commentId', updateComment);
+commentRoute.delete('/:commentId', deleteComment);
 
 module.exports = commentRoute;

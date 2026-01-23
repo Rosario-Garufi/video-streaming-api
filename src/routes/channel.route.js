@@ -6,6 +6,10 @@ const {
   updateNotificationSetting,
   getChannelInfo,
 } = require('../controllers/channel.controller');
+const {
+  getChannelAnalyticsOverview,
+  getChannelDetailedAnalytics,
+} = require('../controllers/channelAnalytics.controller');
 
 const channelRoute = express.Router();
 
@@ -24,5 +28,9 @@ channelRoute.patch(
 channelRoute.patch('/notification-settings', updateNotificationSetting);
 
 //analytics overview
+
+channelRoute.get('/analytics/overwiew', getChannelAnalyticsOverview);
+
+channelRoute.get('/analytics/details/:channelId', getChannelDetailedAnalytics);
 
 module.exports = channelRoute;
