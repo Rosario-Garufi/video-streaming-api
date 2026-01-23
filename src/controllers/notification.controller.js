@@ -142,7 +142,7 @@ const markAllUserNotificationAsRead = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, 'All notification as read!'));
 });
 
-//!@DESC: Delete a specific notification
+//@DESC: Delete a specific notification
 //@route: GET /api/v1/notification/:notificationId
 //Access: Private
 

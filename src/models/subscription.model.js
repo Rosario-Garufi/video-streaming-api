@@ -25,5 +25,5 @@ subscriberSchema.index(
   { unique: true }
 );
 
-const Subscriber = mongoose.model('Subscriber', subscriberSchema);
-module.exports = Subscriber;
+const Subscription = mongoose.model('Subscriber', subscriberSchema);
+module.exports = Subscription;

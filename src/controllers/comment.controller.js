@@ -6,7 +6,7 @@ const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { createNotification } = require('./notification.controller');
 
-//!@Desc: Get all comments for a video with pagination and replies
+//@Desc: Get all comments for a video with pagination and replies
 //@route GET /api/v1/videos/:videoId/comments
 //@access Public
 
@@ -89,7 +89,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   );
 });
 
-//!@Desc: add a new comment or reply to a video
+//@Desc: add a new comment or reply to a video
 //@route GET /api/v1/videos/:videoId/comments
 //@access Private
 
@@ -162,7 +162,7 @@ const addComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, populatedComment, 'Comment add successfully'));
 });
 
-//!@Desc: update existing comment
+//@Desc: update existing comment
 //@route PATCH /api/v1/comments/:commentId
 //@access Private
 
@@ -197,7 +197,7 @@ const updateComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, comment, 'Comment update successfully'));
 });
 
-//!@Desc: delete a comment and all its replies
+//@Desc: delete a comment and all its replies
 //@route DELETE /api/v1/comments/:commentId
 //@access Private
 
@@ -228,7 +228,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, 'Comment deleted successfully'));
 });
 
-//!@Desc: Get all replies for a specific comment with pagination
+//@Desc: Get all replies for a specific comment with pagination
 //@route GET /api/v1/comments/:commentId/replies
 //@access Public
 
@@ -275,19 +275,17 @@ const getCommentReplies = asyncHandler(async (req, res) => {
   });
 
   //return response
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          replies,
-          currentPage: Number(page),
-          totalPages: Math.ceil(totalReplies / Number(limit)),
-        },
-        'Comment replies fetched successfully'
-      )
-    );
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        replies,
+        currentPage: Number(page),
+        totalPages: Math.ceil(totalReplies / Number(limit)),
+      },
+      'Comment replies fetched successfully'
+    )
+  );
 });
 
 module.exports = {

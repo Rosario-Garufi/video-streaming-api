@@ -9,7 +9,7 @@ const {
   deleteFromCloudinary,
 } = require('../utils/cloudinary');
 
-//!@DESC: Post create a new playlist
+//@DESC: Post create a new playlist
 //@route: POST /api/v1/playlists
 //Access: Private
 
@@ -36,7 +36,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
   }
 });
 
-//!@DESC: add a video to a playlist
+//@DESC: add a video to a playlist
 //@route: POST /api/v1/playlists/:playlistId/videos/:videoId
 //Access: Private
 
@@ -82,7 +82,7 @@ const addVideotoPlaylist = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedPlaylist, 'Video added successfully'));
 });
 
-//!@DESC: Get user's videos with video info
+//@DESC: Get user's videos with video info
 //@route: GET /api/v1/users/:userId/playlists
 //Access: Public
 
@@ -145,7 +145,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, playlist, 'Playlist fetched successfully'));
 });
 
-//!@DESC: Get info abaut a specific playlist
+//@DESC: Get info abaut a specific playlist
 //@route: GET /api/v1/playlists/:playlist
 //Access: Public
 
@@ -238,7 +238,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(playlistData, 'Playlist fetched successfully'));
 });
 
-//!@DESC: remove video from a playlist
+//@DESC: remove video from a playlist
 //@route: DELETE /api/v1/playlists/:playlist/videos/:videoId
 //Access: Private
 
@@ -277,7 +277,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatePlaylist, 'Video removed successfully'));
 });
 
-//!@DESC: update playlist details
+//@DESC: update playlist details
 //@route: PATCH /api/v1/playlists/:playlist
 //Access: Private
 
@@ -310,7 +310,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     );
 });
 
-//!@DESC: delete playlist
+//@DESC: delete playlist
 //@route: DELETE /api/v1/playlists/:playlist
 //Access: Private
 

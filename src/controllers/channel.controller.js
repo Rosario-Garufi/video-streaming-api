@@ -2,7 +2,7 @@ const User = require('../models/user.model');
 const Video = require('../models/video.model');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
-//!DESC: Get channel profile information
+//DESC: Get channel profile information
 //@route: GET /api/v1/channels/:username
 
 const asyncHandler = require('../utils/asyncHandler');
@@ -32,7 +32,7 @@ const getChannelInfo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, channel, 'Channel successfully'));
 });
 
-//!DESC: Update channel profile information and coverImage
+//DESC: Update channel profile information and coverImage
 //@route: PATCH /api/v1/channels
 //@Access: Private
 const updateChannelInfo = asyncHandler(async (req, res) => {
@@ -46,10 +46,10 @@ const updateChannelInfo = asyncHandler(async (req, res) => {
   }
 
   if (channelTags !== undefined) {
-    (updateDate.channelDescription = channelDescription),
+    ((updateDate.channelDescription = channelDescription),
       (updateDate.channelTags = Array.isArray(channelTags)
         ? channelTags
-        : JSON.parse(channelTags));
+        : JSON.parse(channelTags)));
   }
 
   if (socialLinks !== undefined) {
@@ -99,7 +99,7 @@ const updateChannelInfo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updateUser, ' channel update successfull'));
 });
 
-//!DESC: Update channel notification preferences
+//DESC: Update channel notification preferences
 //@route: PATCH /api/v1/channels/notifications
 //@Access: Private
 const updateNotificationSetting = asyncHandler(async (req, res) => {
@@ -152,12 +152,12 @@ const updateNotificationSetting = asyncHandler(async (req, res) => {
     );
 });
 
-//!DESC: GET channel vidos with pagination and sorting
+//DESC: GET channel vidos with pagination and sorting
 //@route: GET /api/v1/channels/:username/videos?page=1&limit=10&sortBy=createdAt&sortType=Desc
 //@Access: Private
 const getChannelVideos = asyncHandler(async (req, res) => {});
 
-//!DESC: GET channel share
+//DESC: GET channel share
 //@route: GET /api/v1/channels/:username/share
 //@Access: Private
 const getChannelShareLink = asyncHandler(async (req, res) => {});
